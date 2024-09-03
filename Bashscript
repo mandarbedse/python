@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# File containing the list of S3 buckets
+BUCKET_LIST="buckets.txt"
+
+# Function to get the size of a bucket in GB
+get_bucket_size() {
+  BUCKET_NAME=$1
+  SIZE=$(aws s3 ls s3://$BUCKET_NAME --recursive --summarize 2>/dev/null | grep "Total Size:" | awk '{print $3}')
+  if [ -z "$SIZE" ]; then
+    echo "Unable to access bucket: $BUCKET_NAME or the bucket is empty"
+  else
+    SIZE_GB=$(echo "scale=2; $SIZE/1024/1024/1024" | bc)
+    echo "Bucket: $BUCKET_NAME, Size: ${SIZE_GB} GB"
+  fi
+}
+
+# Read the bucket list and get the size of each
+while IFS= read -r BUCKET_NAME; do
+  echo "Processing bucket: $BUCKET_NAME..."
+  OUTPUT=$(get_bucket_size $BUCKET_NAME)
+
+  if [[ $OUTPUT == *"Unable to access bucket"* ]]; then
+    echo "Skipping bucket: $BUCKET_NAME due to access issues."
+  else
+    echo $OUTPUT
+  fi
+
+done < "$BUCKET_LIST"
