@@ -3,14 +3,18 @@
 # File containing the list of S3 buckets
 BUCKET_LIST="buckets.txt"
 
+# Output file
+OUTPUT_FILE="s3_bucket_sizes.txt"
+
 # Function to get the size of a bucket in a human-readable format
 get_bucket_size() {
   BUCKET_NAME=$1
+  echo "Processing bucket: $BUCKET_NAME..." | tee -a $OUTPUT_FILE
   SIZE=$(aws s3 ls s3://$BUCKET_NAME --recursive --human-readable --summarize 2>&1)
   
   # Check if the command failed due to access issues
   if echo "$SIZE" | grep -q "AccessDenied"; then
-    echo "Access denied for bucket: $BUCKET_NAME"
+    echo "Access denied for bucket: $BUCKET_NAME" | tee -a $OUTPUT_FILE
     return 1
   fi
   
@@ -18,14 +22,18 @@ get_bucket_size() {
   TOTAL_SIZE=$(echo "$SIZE" | grep "Total Size:" | awk '{print $3, $4}')
   
   if [ -z "$TOTAL_SIZE" ]; then
-    echo "Bucket: $BUCKET_NAME is empty or there was an issue retrieving the size."
-  else:
-    echo "Bucket: $BUCKET_NAME, Size: $TOTAL_SIZE"
+    echo "Bucket: $BUCKET_NAME is empty or there was an issue retrieving the size." | tee -a $OUTPUT_FILE
+  else
+    echo "Bucket: $BUCKET_NAME, Size: $TOTAL_SIZE" | tee -a $OUTPUT_FILE
   fi
 }
 
+# Clear the output file before running the script
+> $OUTPUT_FILE
+
 # Read the bucket list and get the size of each
 while IFS= read -r BUCKET_NAME; do
-  echo "Processing bucket: $BUCKET_NAME..."
   get_bucket_size "$BUCKET_NAME"
 done < "$BUCKET_LIST"
+
+echo "All bucket sizes have been saved to $OUTPUT_FILE."
